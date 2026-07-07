@@ -1,0 +1,91 @@
+{
+  "meta": {
+    "sof_type": "BUNKER_FORM2",
+    "agent_company": "PACMAR SHIPPING PTE LTD",
+    "source_modality": "email_text",
+    "extraction_confidence": 1.0
+  },
+  "header": {
+    "vessel_name": null,
+    "eta_next_port": null
+  },
+  "timings": {
+    "end_of_sea_passage": {
+      "datetime": "2026-06-23T23:30"
+    },
+    "pilot_on_board": {
+      "datetime": "2026-06-24T00:42"
+    },
+    "anchored_location": {
+      "place": "EASTERN BUNKERING CHARLIE",
+      "datetime": "2026-06-24T02:00"
+    },
+    "pilot_off": {
+      "datetime": "2026-06-24T02:10"
+    }
+  },
+  "draft_arrival": {
+    "fwd_m": 6.2,
+    "aft_m": 7.9
+  },
+  "rob_arrival": {
+    "ifo_mt": 398.3,
+    "mdo_mt": 187.54,
+    "fw_mt": null
+  },
+  "bunker_mgo": {
+    "barge_alongside": null,
+    "commence": null,
+    "completed": null,
+    "cast_off": null,
+    "qty_mt": 0.0
+  },
+  "bunker_ifo": {
+    "barge_alongside": "2026-06-24T02:30",
+    "commence": "2026-06-24T05:30",
+    "completed": "2026-06-24T11:18",
+    "cast_off": "2026-06-24T12:54",
+    "qty_mt": 948.502
+  },
+  "lub_oil": {
+    "barge_alongside": null,
+    "commence": null,
+    "stop": null,
+    "cast_off": null,
+    "qty_recvd_mt": 0.0
+  },
+  "rob_departure": {
+    "ifo_mt": 1344.2,
+    "mgo_mt": 187.54,
+    "fw_mt": null
+  },
+  "draft_departure": {
+    "fwd_m": 6.3,
+    "aft_m": 7.95
+  },
+  "pilot_ob_departure": "14:30",
+  "pilot_op_departure": "15:10",
+  "signature": {
+    "master_name": null,
+    "agent_name": null,
+    "signature_present": false
+  },
+  "remarks": null,
+  "flags": [
+    {
+      "code": "VESSEL_NAME_MISSING",
+      "detail": "Vessel name not explicitly stated in the provided text.",
+      "severity": "warn"
+    },
+    {
+      "code": "FUEL_TYPE_ASSUMPTION",
+      "detail": "Departure ROB 'LNG' (1344.2 MT) assumed to be IFO based on bunkering activity and common vessel fuel types.",
+      "severity": "warn"
+    },
+    {
+      "code": "FUEL_BALANCE_MISMATCH",
+      "detail": "Departure IFO ROB (1344.2 MT) does not strictly match Arrival IFO ROB (398.3 MT) + Bunkered IFO (948.502 MT = 1346.802 MT). Difference: 2.602 MT.",
+      "severity": "warn"
+    }
+  ]
+}

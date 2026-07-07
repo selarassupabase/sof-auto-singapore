@@ -1,0 +1,31 @@
+# Secrets
+.env
+.env.local
+sof-web-app/.env
+sof-web-app/.env.local
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Generated / temp SOF artifacts
+generated/
+GENERATED*.docx
+temp_*.json
+*_test_out.docx
+SOF_*.pdf
+SOF_*.docx
+
+# Node / Vite
+node_modules/
+sof-web-app/node_modules/
+sof-web-app/dist/
+
+# Skills bundle (bukan bagian proyek SOF — dump eksternal)
+skills/
+
+# OS
+Thumbs.db
+.DS_Store

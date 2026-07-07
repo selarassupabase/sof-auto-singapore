@@ -1,0 +1,81 @@
+{
+  "meta": {
+    "sof_type": "BUNKER_FORM2",
+    "agent_company": "PACMAR SHIPPING PTE LTD",
+    "source_modality": "handwritten_photo",
+    "extraction_confidence": 1.0
+  },
+  "header": {
+    "vessel_name": "AL JUBAIL",
+    "eta_next_port": "YANTAI, CHINA"
+  },
+  "timings": {
+    "end_of_sea_passage": {
+      "datetime": "2026-06-23T23:30"
+    },
+    "pilot_on_board": {
+      "datetime": "2026-06-24T00:42"
+    },
+    "anchored_location": {
+      "place": "PEBGB",
+      "datetime": "2026-06-24T02:00"
+    },
+    "pilot_off": {
+      "datetime": "2026-06-24T15:10"
+    }
+  },
+  "draft_arrival": {
+    "fwd_m": 6.20,
+    "aft_m": 7.90
+  },
+  "rob_arrival": {
+    "ifo_mt": 398.3,
+    "mdo_mt": 187.54,
+    "fw_mt": 530.0
+  },
+  "bunker_mgo": {
+    "barge_alongside": null,
+    "commence": null,
+    "completed": null,
+    "cast_off": null,
+    "qty_mt": null
+  },
+  "bunker_ifo": {
+    "barge_alongside": "2026-06-24T02:30",
+    "commence": "2026-06-24T05:30",
+    "completed": "2026-06-24T11:18",
+    "cast_off": "2026-06-24T12:54",
+    "qty_mt": 948.502
+  },
+  "lub_oil": {
+    "barge_alongside": null,
+    "commence": null,
+    "stop": null,
+    "cast_off": null,
+    "qty_recvd_mt": null
+  },
+  "rob_departure": {
+    "ifo_mt": 1344.2,
+    "mgo_mt": 187.54,
+    "fw_mt": 525.0
+  },
+  "draft_departure": {
+    "fwd_m": 6.30,
+    "aft_m": 7.95
+  },
+  "pilot_ob_departure": "14:30",
+  "pilot_op_departure": "15:10",
+  "signature": {
+    "master_name": "AL JUBAIL MASTER",
+    "agent_name": "DAMIEN LOO",
+    "signature_present": true
+  },
+  "remarks": "",
+  "flags": [
+    {
+      "code": "UNMAPPED_FRESH_WATER_SUPPLY",
+      "detail": "Fresh Water Supply data was present in the source document but could not be mapped to the provided JSON schema.",
+      "severity": "warn"
+    }
+  ]
+}

@@ -29,6 +29,15 @@ def _parse_dt(s):
     return None
 
 
+def _dt_value(node):
+    """Ambil nilai datetime dari node timing yang bisa DUA bentuk:
+    string ISO ('2026-06-23T23:30') ATAU objek ({'datetime': ...}).
+    Ekstraksi LLM tidak selalu konsisten; validator harus tahan keduanya."""
+    if isinstance(node, dict):
+        return node.get("datetime")
+    return node  # string ISO / None
+
+
 def _num(v):
     if v is None:
         return None
@@ -71,19 +80,19 @@ def validate(data):
     if is_cargo:
         flags.append(_flag(
             "SOF_TYPE_UNSUPPORTED",
-            "Dokumen ini terdeteksi Cargo Operations SOF, BUKAN Bunker Form 2. "
-            "Template & skema saat ini hanya untuk Bunker Form 2 (MVP) — data kargo "
-            "(NOR, loading, cargo grade, COSP) tak akan tercetak benar. Jangan generate "
-            "dengan template bunker. Cargo Ops menyusul (butuh template & skema sendiri).",
+            "This document is detected as a Cargo Operations SOF, NOT a Bunker Form 2. "
+            "The current template & schema only support Bunker Form 2 (MVP) — cargo data "
+            "(NOR, loading, cargo grade, COSP) will not print correctly. Do not generate "
+            "with the bunker template. Cargo Ops support is planned (needs its own template & schema).",
             "error"))
         return flags  # tak perlu validasi bunker lain untuk dokumen non-bunker
 
     # --- MISSING_REQUIRED (error) ---
     if not header.get("vessel_name"):
-        flags.append(_flag("MISSING_REQUIRED", "vessel_name kosong.", "error"))
-    if not _parse_dt(((tms.get("end_of_sea_passage") or {}).get("datetime"))):
+        flags.append(_flag("MISSING_REQUIRED", "vessel_name is empty.", "error"))
+    if not _parse_dt(_dt_value(tms.get("end_of_sea_passage"))):
         flags.append(_flag("MISSING_REQUIRED",
-                            "END OF SEA PASSAGE (EOSP) kosong / tak terbaca.", "error"))
+                            "END OF SEA PASSAGE (EOSP) is empty / unreadable.", "error"))
 
     # --- FUEL_BALANCE_MISMATCH (warn) ---
     ifo_arr = _num(ra.get("ifo_mt"))
@@ -109,8 +118,8 @@ def validate(data):
                         ("PILOT OFF", ("pilot_off",))):
         node = tms
         for k in path:
-            node = (node or {}).get(k)
-        d = _parse_dt((node or {}).get("datetime"))
+            node = (node or {}).get(k) if isinstance(node, dict) else None
+        d = _parse_dt(_dt_value(node))
         if d:
             dated.append((label, d))
     if len(dated) >= 2:
@@ -120,16 +129,16 @@ def validate(data):
             if d.year != majority:
                 flags.append(_flag(
                     "YEAR_INCONSISTENT",
-                    f"{label} tahun {d.year} beda dari mayoritas voyage "
-                    f"({majority}) — kemungkinan salah-baca. Cek sumber.",
+                    f"{label} year {d.year} differs from the voyage majority "
+                    f"({majority}) — likely a misread. Check the source.",
                     "warn"))
 
     # --- CHRONOLOGY (warn) ---
     seq = [
-        ("EOSP", (tms.get("end_of_sea_passage") or {}).get("datetime")),
-        ("PILOT ON BOARD", (tms.get("pilot_on_board") or {}).get("datetime")),
-        ("ANCHORED", (tms.get("anchored_location") or {}).get("datetime")),
-        ("PILOT OFF", (tms.get("pilot_off") or {}).get("datetime")),
+        ("EOSP", _dt_value(tms.get("end_of_sea_passage"))),
+        ("PILOT ON BOARD", _dt_value(tms.get("pilot_on_board"))),
+        ("ANCHORED", _dt_value(tms.get("anchored_location"))),
+        ("PILOT OFF", _dt_value(tms.get("pilot_off"))),
     ]
     parsed = [(name, _parse_dt(v)) for name, v in seq]
     prev_name, prev_dt = None, None
@@ -139,7 +148,7 @@ def validate(data):
         if prev_dt is not None and dt < prev_dt:
             flags.append(_flag(
                 "CHRONOLOGY",
-                f"{name} ({dt:%d.%m.%Y %H:%M}) lebih awal dari {prev_name} "
+                f"{name} ({dt:%d.%m.%Y %H:%M}) is earlier than {prev_name} "
                 f"({prev_dt:%d.%m.%Y %H:%M}).",
                 "warn"))
         prev_name, prev_dt = name, dt
@@ -158,7 +167,7 @@ def validate(data):
             if pd is not None and d < pd:
                 flags.append(_flag(
                     "CHRONOLOGY",
-                    f"Bunker {label}: {sname} lebih awal dari {pn}.", "warn"))
+                    f"Bunker {label}: {sname} is earlier than {pn}.", "warn"))
             pn, pd = sname, d
 
     # --- SIGNATURE_CHECK (warn) ---
@@ -178,15 +187,15 @@ def validate(data):
     if _is_company(agent_name):
         flags.append(_flag(
             "SIGNATURE_CHECK",
-            f"agent_name '{agent_name}' adalah nama PERUSAHAAN, bukan nama orang. "
-            f"Nama agen (mis. yang tertulis di sisi 'AS AGENTS') mungkin salah "
-            f"masuk ke master. Cek: master='{master_name or '(kosong)'}'.",
+            f"agent_name '{agent_name}' is a COMPANY name, not a person. "
+            f"The agent's name (e.g. written under 'AS AGENTS') may have been "
+            f"mis-entered into master. Check: master='{master_name or '(empty)'}'.",
             "warn"))
     elif _is_company(master_name):
         flags.append(_flag(
             "SIGNATURE_CHECK",
-            f"master_name '{master_name}' adalah nama perusahaan, bukan kapten. "
-            f"Master biasanya hanya stempel/ttd (nama ketik kosong).",
+            f"master_name '{master_name}' is a company name, not the captain. "
+            f"The master is usually just a stamp/signature (typed name left empty).",
             "warn"))
 
     # --- DRAFT_VS_QTY (warn) ---
@@ -197,7 +206,7 @@ def validate(data):
     if total_qty > 0 and aft_a is not None and aft_d is not None and aft_d < aft_a:
         flags.append(_flag(
             "DRAFT_VS_QTY",
-            f"Fuel masuk {round(total_qty, 3)} MT tapi draft aft turun "
+            f"Fuel received {round(total_qty, 3)} MT but aft draft decreased "
             f"({aft_a} -> {aft_d} m).", "warn"))
 
     return flags

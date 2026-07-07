@@ -11,11 +11,13 @@ Alur: upload -> ekstraksi (Gemini*, vision) -> validasi deterministik (validate.
 
 import os
 import io
+import re
 import json
 import uuid
 import shutil
 import subprocess
 
+from datetime import datetime
 from typing import List
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -160,7 +162,7 @@ def call_extraction(file_bytes, mime_type):
 
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        raise RuntimeError("GEMINI_API_KEY tidak diset")
+        raise RuntimeError("GEMINI_API_KEY is not set")
 
     client = genai.Client(api_key=api_key)
 
@@ -234,7 +236,7 @@ async def extract_merge(files: List[UploadFile] = File(...)):
         except Exception as e:
             print(f"[warn] extraction failed for {f.filename}: {e}")
     if not sources:
-        return JSONResponse({"error": "Semua ekstraksi gagal."}, status_code=500)
+        return JSONResponse({"error": "All extractions failed."}, status_code=500)
     if len(sources) == 1:
         return validate.apply_validation(sources[0])
 
@@ -271,9 +273,9 @@ async def process(files: List[UploadFile] = File(...)):
             errors.append(f"{f.filename}: {e}")
     if not sources:
         # JANGAN palsukan dgn mock -> arsipkan sebagai gagal agar terlihat & bisa ditangani manual.
-        rec = {"vessel_name": "(ekstraksi gagal)", "sof_type": "UNKNOWN",
+        rec = {"vessel_name": "(extraction failed)", "sof_type": "UNKNOWN",
                "review_status": "blocked", "sources": [f.filename for f in files],
-               "flags": [{"code": "EXTRACTION_FAILED", "detail": "; ".join(errors) or "tak ada sumber",
+               "flags": [{"code": "EXTRACTION_FAILED", "detail": "; ".join(errors) or "no sources",
                           "severity": "error"}],
                "decision": {"mode": "review", "blocking": True}}
         return storage.save_document(rec, ext="docx")
@@ -321,17 +323,21 @@ async def document_detail(doc_id: str):
     for d in storage.list_documents():
         if d.get("id") == doc_id:
             return d
-    return JSONResponse({"error": "Tak ditemukan."}, status_code=404)
+    return JSONResponse({"error": "Not found."}, status_code=404)
 
 
 @app.get("/api/documents/{doc_id}/file")
 async def document_file(doc_id: str):
     """Unduh file tergenerate (backend lokal). Untuk Supabase gunakan file_url."""
     path = storage.local_file_path(doc_id)
-    if path:
-        return FileResponse(path, media_type=storage.DOCX_MIME, filename=f"SOF_{doc_id}.docx")
-    return JSONResponse({"error": "File tak ditemukan (mungkin di Supabase — pakai file_url)."},
-                        status_code=404)
+    if not path:
+        return JSONResponse({"error": "File not found (it may be in Supabase — use file_url)."},
+                            status_code=404)
+    # Nama unduhan '<vessel> <tanggal>' — konsisten dgn tombol Export di Review.
+    rec = next((d for d in storage.list_documents() if d.get("id") == doc_id), {})
+    vessel = _clean_vessel(rec.get("vessel_name"))
+    date = (rec.get("created_at") or "")[:10] or datetime.now().strftime("%Y-%m-%d")
+    return FileResponse(path, media_type=storage.DOCX_MIME, filename=f"{vessel} {date}.docx")
 
 
 def _find_soffice():
@@ -350,8 +356,25 @@ def _find_soffice():
     return None
 
 
+def _clean_vessel(name):
+    """Bersihkan nama vessel dari karakter yang tak sah untuk nama file."""
+    v = re.sub(r'[\\/:*?"<>|]+', "", (name or "SOF").strip()).strip()
+    return v or "SOF"
+
+
+def _export_filename_base(data, date=None):
+    """Nama file unduhan: '<vessel> <tanggal-ekspor>' (tanpa ekstensi)."""
+    vessel = _clean_vessel((data.get("header") or {}).get("vessel_name"))
+    date = date or datetime.now().strftime("%Y-%m-%d")
+    return f"{vessel} {date}"
+
+
 @app.post("/api/generate-pdf")
-async def generate_pdf(data: dict):
+async def generate_pdf(data: dict, format: str = "pdf"):
+    fmt = (format or "pdf").lower()
+    if fmt not in ("pdf", "docx"):
+        return JSONResponse({"error": f"Unknown format: {format}"}, status_code=400)
+
     # Guard: jangan cetak dokumen non-bunker ke template bunker.
     blocking = [f for f in validate.validate(data) if f["code"] == "SOF_TYPE_UNSUPPORTED"]
     if blocking:
@@ -370,27 +393,40 @@ async def generate_pdf(data: dict):
         fill_docx.process_docx(json_path, docx_path)
     except Exception as e:
         print(f"[error] fill_docx failed: {e}")
-        return JSONResponse({"error": f"Gagal mengisi template: {e}"}, status_code=500)
+        return JSONResponse({"error": f"Failed to fill template: {e}"}, status_code=500)
 
+    base = _export_filename_base(data)
+
+    # --- Export DOCX ---
+    if fmt == "docx":
+        return FileResponse(
+            docx_path,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            filename=f"{base}.docx",
+        )
+
+    # --- Export PDF (butuh LibreOffice) ---
     soffice = _find_soffice()
-    if soffice:
-        try:
-            subprocess.run([soffice, "--headless", "--convert-to", "pdf",
-                            "--outdir", SCRATCH_DIR, docx_path], check=True, timeout=120)
-            if os.path.exists(pdf_path):
-                return FileResponse(pdf_path, media_type="application/pdf",
-                                    filename="SOF_FINAL.pdf")
-        except Exception as e:
-            print(f"[warn] LibreOffice convert failed: {e}")
+    if not soffice:
+        return JSONResponse(
+            {"error": "LibreOffice is not installed — cannot export PDF. Install LibreOffice "
+                      "or set SOFFICE_PATH, or use Export DOCX.",
+             "code": "PDF_UNAVAILABLE"},
+            status_code=503,
+        )
+    try:
+        subprocess.run([soffice, "--headless", "--convert-to", "pdf",
+                        "--outdir", SCRATCH_DIR, docx_path], check=True, timeout=120)
+    except Exception as e:
+        print(f"[warn] LibreOffice convert failed: {e}")
+        return JSONResponse({"error": f"PDF conversion failed: {e}", "code": "PDF_CONVERT_FAILED"},
+                            status_code=500)
 
-    # Fallback jelas: LibreOffice tak ada / gagal -> kirim DOCX terisi.
-    print("[info] LibreOffice unavailable -> returning filled DOCX.")
-    return FileResponse(
-        docx_path,
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        filename="SOF_FINAL.docx",
-        headers={"X-Pdf-Skipped": "libreoffice-not-found"},
-    )
+    if not os.path.exists(pdf_path):
+        return JSONResponse({"error": "PDF was not produced.", "code": "PDF_CONVERT_FAILED"},
+                            status_code=500)
+
+    return FileResponse(pdf_path, media_type="application/pdf", filename=f"{base}.pdf")
 
 
 @app.get("/api/health")

@@ -138,8 +138,13 @@ Return ONLY a valid JSON object matching the exact schema above.
         print(result[:500])
 
 if __name__ == "__main__":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
     if len(sys.argv) < 2:
         print("Usage: python extract.py <pdf_file_path>")
         sys.exit(1)
-    
+
     extract_sof(sys.argv[1])

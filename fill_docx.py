@@ -196,9 +196,13 @@ def find_paras(root, anchor):
 def _g(d, *path):
     cur = d
     for k in path:
-        if cur is None:
+        if isinstance(cur, dict):
+            cur = cur.get(k)
+        elif k == "datetime":
+            # node timing bentuk FLAT (string ISO) — nilainya SENDIRI adalah datetime.
+            return cur
+        else:
             return None
-        cur = (cur or {}).get(k)
     return cur
 
 

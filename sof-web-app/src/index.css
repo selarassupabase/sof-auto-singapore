@@ -1,8 +1,161 @@
 @import "tailwindcss";
 
-@layer base {
-  body {
-    @apply bg-slate-50 text-slate-900;
-    font-feature-settings: "rlig" 1, "calt" 1;
+/* ============================================================================
+   PACMAR SOF — sistem visual maritim.
+   Ground navy pelabuhan · aksen teal sinyal (lampu navigasi) · kertas bias-biru.
+   Warna semantik (ok/warn/danger) sengaja dipisah dari aksen.
+   ========================================================================== */
+
+/* --- Token runtime (di-flip oleh tema) --- */
+:root {
+  --bg:          #e8edf1;
+  --bg-grid:     #d3dde4;
+  --surface:     #ffffff;
+  --surface-2:   #f2f6f9;
+  --ink:         #0b1a27;
+  --ink-soft:    #47596a;
+  --ink-faint:   #82909e;
+  --line:        #d9e2e9;
+  --line-strong: #c3d0da;
+
+  --accent:        #0a889a;
+  --accent-strong: #076a79;
+  --accent-ink:    #ffffff;
+  --accent-tint:   #d9f0f3;
+
+  --ok:        #1c8f5c;  --ok-tint:     #e2f4ec;
+  --warn:      #b0790c;  --warn-tint:   #f9efd7;
+  --danger:    #c93b3b;  --danger-tint: #fae5e5;
+
+  --shadow-sm: 0 1px 2px rgba(11,26,39,.06), 0 1px 3px rgba(11,26,39,.05);
+  --shadow-md: 0 4px 14px rgba(11,26,39,.08), 0 2px 6px rgba(11,26,39,.05);
+  --shadow-lg: 0 18px 48px rgba(11,26,39,.14), 0 6px 16px rgba(11,26,39,.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:          #071320;
+    --bg-grid:     #0e2130;
+    --surface:     #0e2130;
+    --surface-2:   #143042;
+    --ink:         #e7eff4;
+    --ink-soft:    #93a7b6;
+    --ink-faint:   #5f7688;
+    --line:        #1e3446;
+    --line-strong: #2b4356;
+
+    --accent:        #29b8c8;
+    --accent-strong: #48cad9;
+    --accent-ink:    #04212a;
+    --accent-tint:   #0c3a42;
+
+    --ok:        #33b57d;  --ok-tint:     #0f2f24;
+    --warn:      #dda63c;  --warn-tint:   #392e14;
+    --danger:    #e86a6a;  --danger-tint: #3a1e1e;
+
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+    --shadow-md: 0 6px 20px rgba(0,0,0,.45);
+    --shadow-lg: 0 20px 54px rgba(0,0,0,.55);
   }
+}
+
+/* Override eksplisit dari toggle (menang atas media query, dua arah) */
+:root[data-theme="light"] {
+  --bg:#e8edf1; --bg-grid:#d3dde4; --surface:#ffffff; --surface-2:#f2f6f9;
+  --ink:#0b1a27; --ink-soft:#47596a; --ink-faint:#82909e;
+  --line:#d9e2e9; --line-strong:#c3d0da;
+  --accent:#0a889a; --accent-strong:#076a79; --accent-ink:#ffffff; --accent-tint:#d9f0f3;
+  --ok:#1c8f5c; --ok-tint:#e2f4ec; --warn:#b0790c; --warn-tint:#f9efd7; --danger:#c93b3b; --danger-tint:#fae5e5;
+  --shadow-sm:0 1px 2px rgba(11,26,39,.06),0 1px 3px rgba(11,26,39,.05);
+  --shadow-md:0 4px 14px rgba(11,26,39,.08),0 2px 6px rgba(11,26,39,.05);
+  --shadow-lg:0 18px 48px rgba(11,26,39,.14),0 6px 16px rgba(11,26,39,.08);
+}
+:root[data-theme="dark"] {
+  --bg:#071320; --bg-grid:#0e2130; --surface:#0e2130; --surface-2:#143042;
+  --ink:#e7eff4; --ink-soft:#93a7b6; --ink-faint:#5f7688;
+  --line:#1e3446; --line-strong:#2b4356;
+  --accent:#29b8c8; --accent-strong:#48cad9; --accent-ink:#04212a; --accent-tint:#0c3a42;
+  --ok:#33b57d; --ok-tint:#0f2f24; --warn:#dda63c; --warn-tint:#392e14; --danger:#e86a6a; --danger-tint:#3a1e1e;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow-md:0 6px 20px rgba(0,0,0,.45);
+  --shadow-lg:0 20px 54px rgba(0,0,0,.55);
+}
+
+/* --- Map token -> utilities Tailwind (inline = ikut var runtime) --- */
+@theme inline {
+  --color-bg:          var(--bg);
+  --color-bg-grid:     var(--bg-grid);
+  --color-surface:     var(--surface);
+  --color-surface-2:   var(--surface-2);
+  --color-ink:         var(--ink);
+  --color-ink-soft:    var(--ink-soft);
+  --color-ink-faint:   var(--ink-faint);
+  --color-line:        var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent:        var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-ink:    var(--accent-ink);
+  --color-accent-tint:   var(--accent-tint);
+  --color-ok:     var(--ok);     --color-ok-tint:     var(--ok-tint);
+  --color-warn:   var(--warn);   --color-warn-tint:   var(--warn-tint);
+  --color-danger: var(--danger); --color-danger-tint: var(--danger-tint);
+
+  --font-display: 'Archivo Variable', 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  --font-sans:    'Public Sans Variable', 'Public Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
+}
+
+@layer base {
+  * { border-color: var(--line); }
+  html { color-scheme: light dark; }
+  body {
+    background-color: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv05" 1, "ss01" 1;
+  }
+  /* Ground bertekstur halus: garis grid seperti kertas peta laut */
+  body::before {
+    content: "";
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background-image:
+      linear-gradient(var(--bg-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
+    background-size: 46px 46px;
+    opacity: .35;
+    mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 25%, transparent 75%);
+  }
+  h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
+  ::selection { background: var(--accent); color: var(--accent-ink); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+}
+
+/* --- Utilitas kecil bersama --- */
+@layer components {
+  .eyebrow {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    font-weight: 600;
+    font-size: .68rem;
+    color: var(--ink-faint);
+  }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+  }
+  .rise { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+  .rise:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--line-strong); }
+}
+
+@keyframes floatIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.anim-in { animation: floatIn .5s cubic-bezier(.2,.7,.2,1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+  .rise:hover { transform: none; }
 }

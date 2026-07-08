@@ -25,8 +25,24 @@ W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 V = "urn:schemas-microsoft-com:vml"
 XML_SPACE = "{http://www.w3.org/XML/1998/namespace}space"
 
+# DrawingML (untuk sisip stempel sebagai gambar inline)
+A_NS = "http://schemas.openxmlformats.org/drawingml/2006/main"
+PIC_NS = "http://schemas.openxmlformats.org/drawingml/2006/picture"
+WP_NS = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+
 BASE = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE = os.path.join(BASE, "BUNKER SOF - EUCALYPTUS.docx")
+
+# Stempel resmi (seal organisasi, BUKAN tanda tangan personal — beda dari aturan
+# "jangan generate grafik ttd"). KIRI = Master/kapten, KANAN = Agent.
+# Override lewat env; matikan seluruhnya dengan SOF_STAMPS=0.
+STAMP_LEFT = os.getenv("SOF_STAMP_LEFT") or os.path.join(BASE, "stempel 1.png")
+STAMP_RIGHT = os.getenv("SOF_STAMP_RIGHT") or os.path.join(BASE, "stempel 2.png")
+STAMP_HEIGHT_EMU = 900000  # ~0.98 inci (914400 EMU/inci); lebar dihitung dari rasio
+STAMP_TAB_POS = 6121       # samakan dengan tab kolom 'AS AGENTS' di template
+STAMP_RID_LEFT = "rId901"
+STAMP_RID_RIGHT = "rId902"
 
 # Registry template per varian FORM 2. `path` = file .docx asli klien.
 # FRESH_WATER belum punya .docx sendiri -> pakai bridge (EUCALYPTUS + relabel)
@@ -481,6 +497,101 @@ def relabel_supply(root, cfg):
                     set_run_text(extra, "")
 
 
+# --------------------------------- stempel --------------------------------
+
+def _png_dims(path):
+    """(width, height) piksel dari header PNG (IHDR)."""
+    import struct
+    with open(path, "rb") as f:
+        head = f.read(24)
+    return struct.unpack(">II", head[16:24])
+
+
+def _stamps_enabled():
+    if os.getenv("SOF_STAMPS", "1") in ("0", "false", "False", "no"):
+        return False
+    return os.path.exists(STAMP_LEFT) and os.path.exists(STAMP_RIGHT)
+
+
+def _pic_xml(rid, cx, cy, did, name):
+    """Satu run berisi gambar inline (DrawingML). a/pic namespace dideklarasi
+    inline karena root document.xml tak mengikatnya."""
+    return (
+        f'<w:r><w:drawing>'
+        f'<wp:inline distT="0" distB="0" distL="0" distR="0">'
+        f'<wp:extent cx="{cx}" cy="{cy}"/>'
+        f'<wp:effectExtent l="0" t="0" r="0" b="0"/>'
+        f'<wp:docPr id="{did}" name="{name}"/>'
+        f'<wp:cNvGraphicFramePr>'
+        f'<a:graphicFrameLocks xmlns:a="{A_NS}" noChangeAspect="1"/>'
+        f'</wp:cNvGraphicFramePr>'
+        f'<a:graphic xmlns:a="{A_NS}"><a:graphicData uri="{PIC_NS}">'
+        f'<pic:pic xmlns:pic="{PIC_NS}">'
+        f'<pic:nvPicPr><pic:cNvPr id="{did}" name="{name}"/><pic:cNvPicPr/></pic:nvPicPr>'
+        f'<pic:blipFill><a:blip r:embed="{rid}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>'
+        f'<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm>'
+        f'<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>'
+        f'</pic:pic></a:graphicData></a:graphic>'
+        f'</wp:inline></w:drawing></w:r>'
+    )
+
+
+def _stamp_paragraph():
+    """Paragraf dua-kolom: [stempel kiri][tab@pos][stempel kanan], sejajar
+    label MASTER / AS AGENTS di bawahnya."""
+    wl, hl = _png_dims(STAMP_LEFT)
+    wr, hr = _png_dims(STAMP_RIGHT)
+    cyl = STAMP_HEIGHT_EMU; cxl = int(STAMP_HEIGHT_EMU * wl / hl)
+    cyr = STAMP_HEIGHT_EMU; cxr = int(STAMP_HEIGHT_EMU * wr / hr)
+    xml = (
+        f'<w:p xmlns:w="{W}" xmlns:wp="{WP_NS}" xmlns:r="{R_NS}">'
+        f'<w:pPr><w:tabs><w:tab w:val="left" w:pos="{STAMP_TAB_POS}"/></w:tabs>'
+        f'<w:ind w:left="360"/></w:pPr>'
+        + _pic_xml(STAMP_RID_LEFT, cxl, cyl, 9001, "StempelMaster")
+        + '<w:r><w:tab/></w:r>'
+        + _pic_xml(STAMP_RID_RIGHT, cxr, cyr, 9002, "StempelAgent")
+        + '</w:p>'
+    )
+    return etree.fromstring(xml.encode("utf-8"))
+
+
+def add_stamps(root):
+    """Sisipkan paragraf stempel di ruang tanda tangan: tepat di atas baris nama
+    pihak (paragraf sebelum label 'MASTER ... AS AGENTS'). Anchor pakai label
+    ttd yang unik & tak diubah pengisian (hindari 'PACMAR' di kop surat).
+    Kembalikan True bila blok ttd ditemukan."""
+    frag = _stamp_paragraph()
+    paras = all_paras(root)
+    for idx, p in enumerate(paras):
+        t = para_text(p)
+        if "MASTER" in t and "AGENTS" in t and idx > 0:
+            anchor = paras[idx - 1]          # baris nama pihak (MV ... / PACMAR)
+            parent = anchor.getparent()
+            parent.insert(list(parent).index(anchor), frag)
+            return True
+    return False
+
+
+def _augment_content_types(ct_bytes):
+    """Pastikan Default extension png terdaftar di [Content_Types].xml."""
+    ct = ct_bytes.decode("utf-8")
+    if 'Extension="png"' in ct:
+        return ct_bytes
+    ins = '<Default Extension="png" ContentType="image/png"/>'
+    return ct.replace("</Types>", ins + "</Types>").encode("utf-8")
+
+
+def _augment_rels(rels_bytes):
+    """Tambah relationship gambar untuk kedua stempel."""
+    rels = rels_bytes.decode("utf-8")
+    typ = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+    add = (
+        f'<Relationship Id="{STAMP_RID_LEFT}" Type="{typ}" Target="media/stempel_left.png"/>'
+        f'<Relationship Id="{STAMP_RID_RIGHT}" Type="{typ}" Target="media/stempel_right.png"/>'
+    )
+    return rels.replace("</Relationships>", add + "</Relationships>").encode("utf-8")
+
+
 # --------------------------------- main -----------------------------------
 
 def process_docx(json_path, output_path, template=None):
@@ -506,17 +617,29 @@ def process_docx(json_path, output_path, template=None):
     fill_textboxes(root, data)
     fill_remarks(root, data)
 
+    stamps = _stamps_enabled() and add_stamps(root)
+
     new_xml = etree.tostring(root, xml_declaration=True,
                              encoding="UTF-8", standalone=True)
 
-    # tulis ulang docx: copy semua part, ganti document.xml
+    # tulis ulang docx: copy semua part, ganti document.xml. Bila stempel aktif,
+    # daftarkan png di Content_Types + rels dan tambahkan file media-nya.
     with zipfile.ZipFile(template, "r") as zin, \
             zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zout:
         for item in zin.infolist():
             if item.filename == "word/document.xml":
                 zout.writestr(item, new_xml)
+            elif stamps and item.filename == "[Content_Types].xml":
+                zout.writestr(item, _augment_content_types(zin.read(item.filename)))
+            elif stamps and item.filename == "word/_rels/document.xml.rels":
+                zout.writestr(item, _augment_rels(zin.read(item.filename)))
             else:
                 zout.writestr(item, zin.read(item.filename))
+        if stamps:
+            with open(STAMP_LEFT, "rb") as f:
+                zout.writestr("word/media/stempel_left.png", f.read())
+            with open(STAMP_RIGHT, "rb") as f:
+                zout.writestr("word/media/stempel_right.png", f.read())
 
     return output_path
 

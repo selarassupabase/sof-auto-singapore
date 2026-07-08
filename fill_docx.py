@@ -513,14 +513,10 @@ def _stamps_enabled():
     return os.path.exists(STAMP_LEFT) and os.path.exists(STAMP_RIGHT)
 
 
-def _pic_xml(rid, cx, cy, did, name):
-    """Satu run berisi gambar inline (DrawingML). a/pic namespace dideklarasi
-    inline karena root document.xml tak mengikatnya."""
+def _graphic_xml(rid, cx, cy, did, name):
+    """Isi <a:graphic> (referensi gambar) — sama untuk inline maupun floating.
+    Namespace a/pic dideklarasi inline karena root document.xml tak mengikatnya."""
     return (
-        f'<w:r><w:drawing>'
-        f'<wp:inline distT="0" distB="0" distL="0" distR="0">'
-        f'<wp:extent cx="{cx}" cy="{cy}"/>'
-        f'<wp:effectExtent l="0" t="0" r="0" b="0"/>'
         f'<wp:docPr id="{did}" name="{name}"/>'
         f'<wp:cNvGraphicFramePr>'
         f'<a:graphicFrameLocks xmlns:a="{A_NS}" noChangeAspect="1"/>'
@@ -532,42 +528,58 @@ def _pic_xml(rid, cx, cy, did, name):
         f'<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm>'
         f'<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>'
         f'</pic:pic></a:graphicData></a:graphic>'
-        f'</wp:inline></w:drawing></w:r>'
     )
 
 
-def _stamp_paragraph():
-    """Paragraf dua-kolom: [stempel kiri][tab@pos][stempel kanan], sejajar
-    label MASTER / AS AGENTS di bawahnya."""
-    wl, hl = _png_dims(STAMP_LEFT)
-    wr, hr = _png_dims(STAMP_RIGHT)
-    cyl = STAMP_HEIGHT_EMU; cxl = int(STAMP_HEIGHT_EMU * wl / hl)
-    cyr = STAMP_HEIGHT_EMU; cxr = int(STAMP_HEIGHT_EMU * wr / hr)
-    xml = (
-        f'<w:p xmlns:w="{W}" xmlns:wp="{WP_NS}" xmlns:r="{R_NS}">'
-        f'<w:pPr><w:tabs><w:tab w:val="left" w:pos="{STAMP_TAB_POS}"/></w:tabs>'
-        f'<w:ind w:left="360"/></w:pPr>'
-        + _pic_xml(STAMP_RID_LEFT, cxl, cyl, 9001, "StempelMaster")
-        + '<w:r><w:tab/></w:r>'
-        + _pic_xml(STAMP_RID_RIGHT, cxr, cyr, 9002, "StempelAgent")
-        + '</w:p>'
+def _floating_run(rid, cx, cy, did, name, x, y, z):
+    """Run berisi gambar FLOATING (wp:anchor, wrapNone) supaya menimpa area
+    tanda tangan TANPA menambah tinggi baris -> dokumen tetap 1 halaman.
+    x/y = offset EMU dari kolom/paragraf; behindDoc=0 (di atas garis ttd)."""
+    return (
+        f'<w:r xmlns:w="{W}" xmlns:wp="{WP_NS}" xmlns:r="{R_NS}"><w:drawing>'
+        f'<wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" '
+        f'relativeHeight="{z}" behindDoc="0" locked="0" layoutInCell="1" allowOverlap="1">'
+        f'<wp:simplePos x="0" y="0"/>'
+        f'<wp:positionH relativeFrom="column"><wp:posOffset>{x}</wp:posOffset></wp:positionH>'
+        f'<wp:positionV relativeFrom="paragraph"><wp:posOffset>{y}</wp:posOffset></wp:positionV>'
+        f'<wp:extent cx="{cx}" cy="{cy}"/>'
+        f'<wp:effectExtent l="0" t="0" r="0" b="0"/>'
+        f'<wp:wrapNone/>'
+        + _graphic_xml(rid, cx, cy, did, name)
+        + '</wp:anchor></w:drawing></w:r>'
     )
-    return etree.fromstring(xml.encode("utf-8"))
 
 
 def add_stamps(root):
-    """Sisipkan paragraf stempel di ruang tanda tangan: tepat di atas baris nama
-    pihak (paragraf sebelum label 'MASTER ... AS AGENTS'). Anchor pakai label
-    ttd yang unik & tak diubah pengisian (hindari 'PACMAR' di kop surat).
-    Kembalikan True bila blok ttd ditemukan."""
-    frag = _stamp_paragraph()
+    """Tempel stempel sebagai gambar FLOATING di ruang tanda tangan, di-anchor ke
+    baris nama pihak (paragraf sebelum label 'MASTER ... AS AGENTS'). Karena
+    floating (wrapNone), tak menambah tinggi -> dokumen tetap 1 halaman.
+    Offset dapat di-override lewat env SOF_STAMP_* (EMU). True bila blok ditemukan."""
+    wl, hl = _png_dims(STAMP_LEFT)
+    wr, hr = _png_dims(STAMP_RIGHT)
+    cxl = int(STAMP_HEIGHT_EMU * wl / hl); cyl = STAMP_HEIGHT_EMU
+    cxr = int(STAMP_HEIGHT_EMU * wr / hr); cyr = STAMP_HEIGHT_EMU
+
+    x_left = int(os.getenv("SOF_STAMP_X_LEFT", "150000"))
+    x_right = int(os.getenv("SOF_STAMP_X_RIGHT", "3900000"))
+    y_off = int(os.getenv("SOF_STAMP_Y", "-980000"))   # naik ~1.07 inci ke ruang ttd
+
+    run_left = etree.fromstring(
+        _floating_run(STAMP_RID_LEFT, cxl, cyl, 9001, "StempelMaster",
+                      x_left, y_off, 251).encode("utf-8"))
+    run_right = etree.fromstring(
+        _floating_run(STAMP_RID_RIGHT, cxr, cyr, 9002, "StempelAgent",
+                      x_right, y_off, 252).encode("utf-8"))
+
     paras = all_paras(root)
     for idx, p in enumerate(paras):
         t = para_text(p)
         if "MASTER" in t and "AGENTS" in t and idx > 0:
-            anchor = paras[idx - 1]          # baris nama pihak (MV ... / PACMAR)
-            parent = anchor.getparent()
-            parent.insert(list(parent).index(anchor), frag)
+            names = paras[idx - 1]           # baris nama pihak (MV ... / PACMAR)
+            ppr = names.find(_q("pPr"))
+            pos = list(names).index(ppr) + 1 if ppr is not None else 0
+            names.insert(pos, run_right)     # sisip setelah pPr, sebelum run teks
+            names.insert(pos, run_left)
             return True
     return False
 

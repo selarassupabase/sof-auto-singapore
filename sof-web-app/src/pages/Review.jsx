@@ -50,7 +50,7 @@ const SECTIONS = [
     ['rob_departure.ifo_mt', 'ROB IFO (MT)'], ['rob_departure.mgo_mt', 'ROB MGO (MT)'], ['rob_departure.fw_mt', 'ROB FW (MT)'],
     ['pilot_ob_departure', 'Pilot O/B Departure'], ['pilot_op_departure', 'Pilot O/P Departure'],
   ]},
-  { title: 'Signature (typed name — signature is never auto-applied)', fields: [
+  { title: 'Signature (typed name; signature is never auto-applied)', fields: [
     ['signature.master_name', "Master's Name"], ['signature.agent_name', "Agent's Name"],
   ]},
 ]
@@ -133,9 +133,9 @@ export default function Review() {
     ? { bg: 'var(--danger-tint)', fg: 'var(--danger)', Icon: XCircle, title: 'Cannot generate',
         body: 'A blocking error was found (e.g. the document is not a Bunker Form 2). Fix the source.' }
     : isAuto
-    ? { bg: 'var(--ok-tint)', fg: 'var(--ok)', Icon: ShieldCheck, title: 'Passed automatically — ready to export',
+    ? { bg: 'var(--ok-tint)', fg: 'var(--ok)', Icon: ShieldCheck, title: 'Passed automatically, ready to export',
         body: 'No flags and high confidence. You can Approve & Export directly.' }
-    : { bg: 'var(--warn-tint)', fg: 'var(--warn)', Icon: AlertTriangle, title: `Needs review — ${decision.warn_count || 0} finding${(decision.warn_count || 0) === 1 ? '' : 's'}`,
+    : { bg: 'var(--warn-tint)', fg: 'var(--warn)', Icon: AlertTriangle, title: `Needs review: ${decision.warn_count || 0} finding${(decision.warn_count || 0) === 1 ? '' : 's'}`,
         body: 'Check and correct the flagged fields below before exporting.' }
 
   return (

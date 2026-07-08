@@ -1,7 +1,7 @@
 import React from 'react'
 
 /**
- * Mark PACMAR — jarum kompas berfaset di dalam badge.
+ * Mark PACMAR: jarum kompas berfaset di dalam badge.
  * Mengandung dua makna proyek: navigasi maritim + "menetapkan arah / memverifikasi".
  */
 export function Mark({ size = 28 }) {

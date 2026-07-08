@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ============================================================================
-   PACMAR SOF — sistem visual maritim.
+   PACMAR SOF: sistem visual maritim.
    Ground navy pelabuhan · aksen teal sinyal (lampu navigasi) · kertas bias-biru.
    Warna semantik (ok/warn/danger) sengaja dipisah dari aksen.
    ========================================================================== */
@@ -100,8 +100,8 @@
   --color-warn:   var(--warn);   --color-warn-tint:   var(--warn-tint);
   --color-danger: var(--danger); --color-danger-tint: var(--danger-tint);
 
-  --font-display: 'Archivo Variable', 'Archivo', ui-sans-serif, system-ui, sans-serif;
-  --font-sans:    'Public Sans Variable', 'Public Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Space Grotesk Variable', 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-sans:    'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-mono:    'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
 }
 

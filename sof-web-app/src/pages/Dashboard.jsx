@@ -79,7 +79,7 @@ export default function Dashboard() {
             <span className="text-accent">official SOF</span>, automatically.
           </h1>
           <p className="mt-4 text-ink-soft text-[15px] leading-relaxed">
-            Upload one handwritten photo — or several sources for the same voyage.
+            Upload one handwritten photo, or several sources for the same voyage.
             The system extracts, cross-checks, and flags whatever a human should look at.
           </p>
         </div>
@@ -104,7 +104,7 @@ export default function Dashboard() {
               <UploadCloud style={{ width: 30, height: 30 }} />
             </span>
             <h3 className="font-display font-bold text-ink text-lg">Drag &amp; drop here</h3>
-            <p className="text-sm text-ink-soft mt-1">or <span className="text-accent font-medium">browse files</span> — JPG, PNG, PDF, TXT</p>
+            <p className="text-sm text-ink-soft mt-1">or <span className="text-accent font-medium">browse files</span>. JPG, PNG, PDF, TXT</p>
           </form>
         </div>
 
@@ -137,7 +137,7 @@ export default function Dashboard() {
           <div className="mt-3 flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-[13px]"
             style={{ background: 'var(--accent-tint)', color: 'var(--accent-strong)' }}>
             <Layers style={{ width: 16, height: 16, marginTop: 1 }} className="shrink-0" />
-            <span><b>Cross-source mode:</b> {files.length} sources merged — the first file is the primary reference, conflicts get flagged.</span>
+            <span><b>Cross-source mode:</b> {files.length} sources merged. The first file is the primary reference; conflicts get flagged.</span>
           </div>
         )}
 

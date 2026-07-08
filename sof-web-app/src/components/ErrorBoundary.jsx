@@ -33,7 +33,7 @@ export default class ErrorBoundary extends React.Component {
           </span>
           <h1 className="font-display font-bold text-ink" style={{ fontSize: '1.25rem' }}>Something went wrong</h1>
           <p className="text-ink-soft text-sm" style={{ marginTop: 6 }}>
-            The page hit an unexpected error. Your data is safe — reloading usually fixes it.
+            The page hit an unexpected error. Your data is safe. Reloading usually fixes it.
           </p>
           <pre className="tnum" style={{
             marginTop: 14, padding: '10px 12px', borderRadius: 10, textAlign: 'left',

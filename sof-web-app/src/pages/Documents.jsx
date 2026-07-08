@@ -198,19 +198,19 @@ export default function Documents() {
                         </td>
                         <td className="px-4 py-3.5 font-medium text-ink whitespace-nowrap" style={{ borderBottom: '1px solid var(--line)' }}>
                           <span className="inline-flex items-center gap-2">
-                            <Ship style={{ width: 15, height: 15, color: 'var(--ink-faint)' }} />{d.vessel_name || '—'}
+                            <Ship style={{ width: 15, height: 15, color: 'var(--ink-faint)' }} />{d.vessel_name || '-'}
                           </span>
                         </td>
                         <td className="px-4 py-3.5 text-ink-soft whitespace-nowrap" style={{ borderBottom: '1px solid var(--line)' }}>
-                          <span className="font-mono text-xs">{d.sof_type || '—'}</span>
+                          <span className="font-mono text-xs">{d.sof_type || '-'}</span>
                         </td>
                         <td className="px-4 py-3.5 text-ink-soft" style={{ borderBottom: '1px solid var(--line)' }}>
-                          {(d.sources || []).join(', ') || '—'}
+                          {(d.sources || []).join(', ') || '-'}
                           {(d.sources || []).length > 1 && <span className="ml-1.5 text-xs" style={{ color: 'var(--accent)' }}>cross-source</span>}
                         </td>
                         <td className="px-4 py-3.5 tnum" style={{ borderBottom: '1px solid var(--line)' }}>
                           {flagN === 0
-                            ? <span style={{ color: 'var(--ok)' }}>—</span>
+                            ? <span style={{ color: 'var(--ok)' }}>None</span>
                             : <span style={{ color: d.review_status === 'blocked' ? 'var(--danger)' : 'var(--warn)' }}>{flagN} flag{flagN > 1 ? 's' : ''}</span>}
                         </td>
                         <td className="px-4 py-3.5 text-ink-soft whitespace-nowrap tnum text-[13px]" style={{ borderBottom: '1px solid var(--line)' }}>{fmtDate(d.created_at)}</td>

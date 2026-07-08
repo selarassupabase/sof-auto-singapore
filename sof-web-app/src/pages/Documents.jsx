@@ -4,7 +4,7 @@ import { Download, Pencil, RefreshCw, UploadCloud, Ship, Inbox, Search, X, Searc
 import TopBar from '../components/TopBar'
 import { STATUS, StatusPill } from '../components/status'
 
-const API = 'http://localhost:8000'
+import { API } from '../lib/api'
 
 const fmtDate = (iso) => {
   try { return new Date(iso).toLocaleString('en-SG', { dateStyle: 'medium', timeStyle: 'short' }) }

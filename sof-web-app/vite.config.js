@@ -8,4 +8,6 @@ export default defineConfig({
     tailwindcss(),
     react()
   ],
+  // host:true -> bind 0.0.0.0 supaya dev server bisa diakses dari HP di WiFi yang sama.
+  server: { host: true },
 })

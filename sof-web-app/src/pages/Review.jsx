@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, Info, XCircle, CheckCircle2, ShieldCheck, ArrowLeft, FileText, Ship } from 'lucide-react'
 import TopBar from '../components/TopBar'
 
-const API = 'http://localhost:8000'
+import { API } from '../lib/api'
 
 const get = (obj, path) => path.split('.').reduce((o, k) => (o == null ? o : o[k]), obj)
 const setPath = (obj, path, value) => {

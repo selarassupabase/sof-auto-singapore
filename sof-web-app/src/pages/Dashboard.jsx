@@ -1,9 +1,8 @@
 import React, { useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { UploadCloud, Loader2, FileText, X, Layers, ArrowRight, Archive } from 'lucide-react'
+import { UploadCloud, Loader2, FileText, X, Layers, ArrowRight, Archive, Camera } from 'lucide-react'
 import TopBar from '../components/TopBar'
-
-const API = 'http://localhost:8000'
+import { API } from '../lib/api'
 
 const STEPS = [
   ['01', 'Upload', 'A handwritten form photo or an email log'],
@@ -17,6 +16,7 @@ export default function Dashboard() {
   const [isBusy, setIsBusy] = useState(false)
   const [error, setError] = useState(null)
   const inputRef = useRef(null)
+  const cameraRef = useRef(null)
   const navigate = useNavigate()
 
   const addFiles = (list) => {
@@ -107,6 +107,16 @@ export default function Dashboard() {
             <p className="text-sm text-ink-soft mt-1">or <span className="text-accent font-medium">browse files</span>. JPG, PNG, PDF, TXT</p>
           </form>
         </div>
+
+        {/* Take photo (opens the rear camera on mobile) */}
+        <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
+          onChange={(e) => addFiles(e.target.files)} />
+        <button type="button" onClick={() => cameraRef.current?.click()}
+          className="anim-in mt-3 w-full inline-flex items-center justify-center gap-2 h-12 rounded-xl
+                     border border-line text-ink-soft hover:text-accent hover:border-accent transition-colors"
+          style={{ animationDelay: '.09s' }}>
+          <Camera style={{ width: 18, height: 18 }} /> Take a photo
+        </button>
 
         {/* Selected files */}
         {files.length > 0 && (

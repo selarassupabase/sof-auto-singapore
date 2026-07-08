@@ -1,0 +1,6 @@
+# Frontend Vercel = folder sof-web-app saja (static Vite).
+# Backend Python jalan di Railway — jangan pernah dibangun/dijalankan Vercel
+# sebagai serverless function.
+*.py
+requirements.txt
+Procfile

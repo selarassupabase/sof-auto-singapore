@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, Info, XCircle, CheckCircle2, ShieldCheck, ArrowLeft, FileText, Ship } from 'lucide-react'
+import { AlertTriangle, Info, XCircle, CheckCircle2, ShieldCheck, ArrowLeft, FileText, Ship, Eye, X, Download, ExternalLink } from 'lucide-react'
 import TopBar from '../components/TopBar'
 
 import { API } from '../lib/api'
@@ -66,7 +66,11 @@ export default function Review() {
   const [sources, setSources] = useState([])
   const [busy, setBusy] = useState(null)
   const [msg, setMsg] = useState(null)
+  const [preview, setPreview] = useState(null) // { url, name } — PDF ditampilkan di layar, tanpa unduh
   const navigate = useNavigate()
+
+  // Bebaskan blob URL saat modal ditutup / komponen dilepas.
+  useEffect(() => () => { if (preview?.url) window.URL.revokeObjectURL(preview.url) }, [preview])
 
   useEffect(() => {
     const stored = localStorage.getItem('sof_extraction')
@@ -81,6 +85,38 @@ export default function Review() {
   }, [])
 
   const update = (path, value) => setData((d) => setPath(d, path, value))
+
+  const exportName = (fmt) => {
+    const today = new Date().toISOString().slice(0, 10)
+    const vessel = (data?.header?.vessel_name || 'SOF').replace(/[\\/:*?"<>|]+/g, '').trim() || 'SOF'
+    return `${vessel} ${today}.${fmt}`
+  }
+
+  // Preview: generate PDF resmi lalu tampilkan di layar (modal), TANPA mengunduh.
+  const handlePreview = async () => {
+    if (!data || busy) return
+    setBusy('preview'); setMsg(null)
+    try {
+      const res = await fetch(`${API}/api/generate-pdf?format=pdf`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        let detail = 'Failed to build the preview'
+        try { detail = (await res.json())?.error || detail } catch { /* noop */ }
+        throw new Error(detail)
+      }
+      const blob = await res.blob()
+      // Buka blob PDF (bukan attachment) supaya bisa dirender di dalam iframe.
+      const url = window.URL.createObjectURL(blob.type ? blob : new Blob([blob], { type: 'application/pdf' }))
+      setPreview({ url, name: exportName('pdf') })
+    } catch (e) {
+      setMsg({ ok: false, text: e.message })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const closePreview = () => setPreview(null)
 
   const handleGenerate = async (fmt) => {
     if (!data || busy) return
@@ -142,11 +178,21 @@ export default function Review() {
     <div className="min-h-screen">
       <TopBar>
         <button
+          onClick={handlePreview}
+          disabled={!!busy || blocked}
+          title={blocked ? 'Resolve the blocking error first' : 'See the finished SOF on screen — no download'}
+          className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold transition-all disabled:opacity-45 disabled:cursor-not-allowed"
+          style={{ background: 'var(--accent)', color: 'var(--accent-ink)' }}
+        >
+          <Eye style={{ width: 16, height: 16 }} />
+          {busy === 'preview' ? 'Building…' : 'Preview'}
+        </button>
+        <button
           onClick={() => handleGenerate('docx')}
           disabled={!!busy || blocked}
           title={blocked ? 'Resolve the blocking error first' : 'Download as DOCX'}
           className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold transition-all disabled:opacity-45 disabled:cursor-not-allowed"
-          style={{ background: isAuto ? 'var(--ok)' : 'var(--accent)', color: '#fff' }}
+          style={{ background: isAuto ? 'var(--ok)' : 'var(--surface-2)', color: isAuto ? '#fff' : 'var(--ink)', border: isAuto ? 'none' : '1px solid var(--line)' }}
         >
           <FileText style={{ width: 16, height: 16 }} />
           {busy === 'docx' ? 'Processing…' : isAuto ? 'Approve & Export' : 'Fix & Export'}
@@ -248,6 +294,47 @@ export default function Review() {
           </details>
         </div>
       </main>
+
+      {/* Preview PDF di layar — klien lihat hasil jadi tanpa mengunduh. */}
+      {preview && (
+        <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'rgba(0,0,0,0.6)' }}
+          onClick={closePreview}>
+          <div className="mx-auto w-full max-w-4xl flex-1 flex flex-col min-h-0 p-3 sm:p-5"
+            onClick={(e) => e.stopPropagation()}>
+            {/* Bar atas modal */}
+            <div className="flex items-center justify-between gap-2 rounded-t-2xl px-4 py-3"
+              style={{ background: 'var(--surface)', borderBottom: '1px solid var(--line)' }}>
+              <span className="flex items-center gap-2 min-w-0">
+                <Eye style={{ width: 17, height: 17, color: 'var(--accent)' }} className="shrink-0" />
+                <span className="truncate text-sm font-semibold text-ink">{preview.name}</span>
+              </span>
+              <span className="flex items-center gap-1.5 shrink-0">
+                <a href={preview.url} target="_blank" rel="noreferrer" title="Open in a new tab"
+                  className="grid place-items-center w-9 h-9 rounded-lg text-ink-soft hover:text-accent hover:bg-accent-tint transition-colors">
+                  <ExternalLink style={{ width: 16, height: 16 }} />
+                </a>
+                <a href={preview.url} download={preview.name} title="Download PDF"
+                  className="grid place-items-center w-9 h-9 rounded-lg text-ink-soft hover:text-ok transition-colors">
+                  <Download style={{ width: 16, height: 16 }} />
+                </a>
+                <button onClick={closePreview} title="Close"
+                  className="grid place-items-center w-9 h-9 rounded-lg text-ink-soft hover:text-danger transition-colors">
+                  <X style={{ width: 18, height: 18 }} />
+                </button>
+              </span>
+            </div>
+            {/* Dokumen */}
+            <div className="flex-1 min-h-0 rounded-b-2xl overflow-hidden" style={{ background: '#525659' }}>
+              <iframe src={preview.url} title="SOF preview" className="w-full h-full" style={{ border: 0 }} />
+            </div>
+            {/* Fallback bila iframe PDF kosong (sebagian browser HP) */}
+            <a href={preview.url} target="_blank" rel="noreferrer"
+              className="mt-2 text-center text-xs text-white/80 hover:text-white sm:hidden">
+              Tidak tampil? Ketuk untuk buka di tab baru
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

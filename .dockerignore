@@ -1,0 +1,11 @@
+# Jaga image backend tetap ramping: frontend & skills tidak dibutuhkan server.
+.git
+sof-web-app
+skills
+generated
+__pycache__
+*.pyc
+# Artefak lokal / cadangan yang tak dipakai runtime.
+*.LOCAL-BACKUP.docx
+GENERATED_*.docx
+temp_*.json

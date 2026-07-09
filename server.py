@@ -15,6 +15,8 @@ import re
 import json
 import uuid
 import shutil
+import pathlib
+import tempfile
 import subprocess
 
 from datetime import datetime
@@ -414,8 +416,12 @@ async def generate_pdf(data: dict, format: str = "pdf"):
              "code": "PDF_UNAVAILABLE"},
             status_code=503,
         )
+    # Profil user sementara per-konversi: hindari "profile lock"/HOME tak-writable
+    # di container (Railway) + aman untuk request paralel.
+    profile_uri = pathlib.Path(tempfile.mkdtemp(prefix="lo_profile_")).as_uri()
     try:
-        subprocess.run([soffice, "--headless", "--convert-to", "pdf",
+        subprocess.run([soffice, f"-env:UserInstallation={profile_uri}",
+                        "--headless", "--convert-to", "pdf",
                         "--outdir", SCRATCH_DIR, docx_path], check=True, timeout=120)
     except Exception as e:
         print(f"[warn] LibreOffice convert failed: {e}")

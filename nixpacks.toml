@@ -1,0 +1,5 @@
+# Railway/Nixpacks: pasang LibreOffice supaya backend bisa konversi DOCX -> PDF.
+# Tanpa ini, /api/generate-pdf (dan tombol Preview) gagal: "LibreOffice is not installed".
+# libreoffice-writer sudah menarik core + soffice; fonts untuk render template rapi.
+[phases.setup]
+aptPkgs = ["libreoffice-writer", "libreoffice-core", "fonts-liberation", "fonts-dejavu-core"]

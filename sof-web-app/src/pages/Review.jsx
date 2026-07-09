@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, Info, XCircle, CheckCircle2, ShieldCheck, ArrowLeft, FileText, Ship, Eye, X, Download, ExternalLink } from 'lucide-react'
+import { AlertTriangle, Info, XCircle, CheckCircle2, ShieldCheck, ArrowLeft, FileText, Ship, Eye, X, Download } from 'lucide-react'
 import TopBar from '../components/TopBar'
 
 import { API } from '../lib/api'
@@ -92,12 +92,13 @@ export default function Review() {
     return `${vessel} ${today}.${fmt}`
   }
 
-  // Preview: generate PDF resmi lalu tampilkan di layar (modal), TANPA mengunduh.
+  // Preview: render SOF resmi jadi GAMBAR (PNG) lalu tampilkan inline di layar.
+  // Gambar dipilih (bukan PDF di iframe) karena banyak browser HP tak render PDF blob.
   const handlePreview = async () => {
     if (!data || busy) return
     setBusy('preview'); setMsg(null)
     try {
-      const res = await fetch(`${API}/api/generate-pdf?format=pdf`, {
+      const res = await fetch(`${API}/api/generate-pdf?format=png`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
       })
       if (!res.ok) {
@@ -106,8 +107,7 @@ export default function Review() {
         throw new Error(detail)
       }
       const blob = await res.blob()
-      // Buka blob PDF (bukan attachment) supaya bisa dirender di dalam iframe.
-      const url = window.URL.createObjectURL(blob.type ? blob : new Blob([blob], { type: 'application/pdf' }))
+      const url = window.URL.createObjectURL(blob)
       setPreview({ url, name: exportName('pdf') })
     } catch (e) {
       setMsg({ ok: false, text: e.message })
@@ -181,7 +181,7 @@ export default function Review() {
           onClick={handlePreview}
           disabled={!!busy || blocked}
           title={blocked ? 'Resolve the blocking error first' : 'See the finished SOF on screen — no download'}
-          className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold transition-all disabled:opacity-45 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 h-9 px-3 sm:px-4 rounded-lg text-sm font-semibold transition-all disabled:opacity-45 disabled:cursor-not-allowed"
           style={{ background: 'var(--accent)', color: 'var(--accent-ink)' }}
         >
           <Eye style={{ width: 16, height: 16 }} />
@@ -191,11 +191,12 @@ export default function Review() {
           onClick={() => handleGenerate('docx')}
           disabled={!!busy || blocked}
           title={blocked ? 'Resolve the blocking error first' : 'Download as DOCX'}
-          className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold transition-all disabled:opacity-45 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 h-9 px-3 sm:px-4 rounded-lg text-sm font-semibold transition-all disabled:opacity-45 disabled:cursor-not-allowed"
           style={{ background: isAuto ? 'var(--ok)' : 'var(--surface-2)', color: isAuto ? '#fff' : 'var(--ink)', border: isAuto ? 'none' : '1px solid var(--line)' }}
         >
           <FileText style={{ width: 16, height: 16 }} />
-          {busy === 'docx' ? 'Processing…' : isAuto ? 'Approve & Export' : 'Fix & Export'}
+          <span className="hidden sm:inline">{busy === 'docx' ? 'Processing…' : isAuto ? 'Approve & Export' : 'Fix & Export'}</span>
+          <span className="sm:hidden">{busy === 'docx' ? '…' : 'DOCX'}</span>
         </button>
       </TopBar>
 
@@ -295,43 +296,38 @@ export default function Review() {
         </div>
       </main>
 
-      {/* Preview PDF di layar — klien lihat hasil jadi tanpa mengunduh. */}
+      {/* Preview di layar — SOF tampil sebagai gambar, langsung terlihat tanpa unduh. */}
       {preview && (
-        <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'rgba(0,0,0,0.6)' }}
+        <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'rgba(0,0,0,0.72)' }}
           onClick={closePreview}>
-          <div className="mx-auto w-full max-w-4xl flex-1 flex flex-col min-h-0 p-3 sm:p-5"
+          <div className="mx-auto w-full max-w-3xl flex-1 flex flex-col min-h-0 p-2 sm:p-4"
             onClick={(e) => e.stopPropagation()}>
             {/* Bar atas modal */}
-            <div className="flex items-center justify-between gap-2 rounded-t-2xl px-4 py-3"
+            <div className="flex items-center justify-between gap-2 rounded-t-2xl px-3 sm:px-4 py-2.5"
               style={{ background: 'var(--surface)', borderBottom: '1px solid var(--line)' }}>
               <span className="flex items-center gap-2 min-w-0">
                 <Eye style={{ width: 17, height: 17, color: 'var(--accent)' }} className="shrink-0" />
-                <span className="truncate text-sm font-semibold text-ink">{preview.name}</span>
+                <span className="truncate text-sm font-semibold text-ink">
+                  {data?.header?.vessel_name || 'SOF'} · preview
+                </span>
               </span>
               <span className="flex items-center gap-1.5 shrink-0">
-                <a href={preview.url} target="_blank" rel="noreferrer" title="Open in a new tab"
-                  className="grid place-items-center w-9 h-9 rounded-lg text-ink-soft hover:text-accent hover:bg-accent-tint transition-colors">
-                  <ExternalLink style={{ width: 16, height: 16 }} />
-                </a>
-                <a href={preview.url} download={preview.name} title="Download PDF"
-                  className="grid place-items-center w-9 h-9 rounded-lg text-ink-soft hover:text-ok transition-colors">
-                  <Download style={{ width: 16, height: 16 }} />
-                </a>
+                <button onClick={() => handleGenerate('pdf')} disabled={!!busy} title="Download PDF"
+                  className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-semibold transition-all disabled:opacity-45"
+                  style={{ background: 'var(--accent)', color: 'var(--accent-ink)' }}>
+                  <Download style={{ width: 15, height: 15 }} />
+                  <span className="hidden sm:inline">{busy === 'pdf' ? 'Downloading…' : 'PDF'}</span>
+                </button>
                 <button onClick={closePreview} title="Close"
                   className="grid place-items-center w-9 h-9 rounded-lg text-ink-soft hover:text-danger transition-colors">
                   <X style={{ width: 18, height: 18 }} />
                 </button>
               </span>
             </div>
-            {/* Dokumen */}
-            <div className="flex-1 min-h-0 rounded-b-2xl overflow-hidden" style={{ background: '#525659' }}>
-              <iframe src={preview.url} title="SOF preview" className="w-full h-full" style={{ border: 0 }} />
+            {/* Gambar SOF — full width, scroll vertikal bila panjang */}
+            <div className="flex-1 min-h-0 overflow-auto rounded-b-2xl" style={{ background: '#525659' }}>
+              <img src={preview.url} alt="SOF preview" className="block w-full h-auto" />
             </div>
-            {/* Fallback bila iframe PDF kosong (sebagian browser HP) */}
-            <a href={preview.url} target="_blank" rel="noreferrer"
-              className="mt-2 text-center text-xs text-white/80 hover:text-white sm:hidden">
-              Tidak tampil? Ketuk untuk buka di tab baru
-            </a>
           </div>
         </div>
       )}

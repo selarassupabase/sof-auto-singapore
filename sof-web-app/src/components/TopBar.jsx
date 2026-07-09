@@ -9,12 +9,12 @@ export default function TopBar({ children }) {
   return (
     <header className="sticky top-0 z-20 border-b border-line"
       style={{ background: 'color-mix(in oklab, var(--bg) 82%, transparent)', backdropFilter: 'blur(10px)' }}>
-      <div className="mx-auto max-w-6xl px-5 h-16 flex items-center gap-4">
-        <button onClick={() => navigate('/')} className="rounded-lg -ml-1 px-1 py-1 hover:opacity-80 transition-opacity">
+      <div className="mx-auto max-w-6xl px-3 sm:px-5 h-16 flex items-center gap-2 sm:gap-4">
+        <button onClick={() => navigate('/')} className="rounded-lg -ml-1 px-1 py-1 hover:opacity-80 transition-opacity shrink-0">
           <Brand />
         </button>
         <div className="flex-1" />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {children}
           <ThemeToggle />
         </div>

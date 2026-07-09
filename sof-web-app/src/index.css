@@ -108,6 +108,8 @@
 @layer base {
   * { border-color: var(--line); }
   html { color-scheme: light dark; }
+  /* Cegah halaman bisa digeser ke samping di HP (overflow horizontal tak sengaja). */
+  html, body { max-width: 100%; overflow-x: hidden; }
   body {
     background-color: var(--bg);
     color: var(--ink);

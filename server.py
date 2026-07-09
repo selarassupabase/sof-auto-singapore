@@ -374,7 +374,7 @@ def _export_filename_base(data, date=None):
 @app.post("/api/generate-pdf")
 async def generate_pdf(data: dict, format: str = "pdf"):
     fmt = (format or "pdf").lower()
-    if fmt not in ("pdf", "docx"):
+    if fmt not in ("pdf", "docx", "png"):
         return JSONResponse({"error": f"Unknown format: {format}"}, status_code=400)
 
     # Guard: jangan cetak dokumen non-bunker ke template bunker.
@@ -431,6 +431,22 @@ async def generate_pdf(data: dict, format: str = "pdf"):
     if not os.path.exists(pdf_path):
         return JSONResponse({"error": "PDF was not produced.", "code": "PDF_CONVERT_FAILED"},
                             status_code=500)
+
+    # --- Preview PNG: render halaman 1 -> gambar ---
+    # Banyak browser HP menolak render PDF di <iframe>; gambar selalu tampil inline.
+    if fmt == "png":
+        try:
+            import fitz
+            doc = fitz.open(pdf_path)
+            pix = doc[0].get_pixmap(dpi=170)  # cukup tajam untuk dibaca & di-zoom di HP
+            png_path = os.path.join(SCRATCH_DIR, f"SOF_{req_id}.png")
+            pix.save(png_path)
+            doc.close()
+        except Exception as e:
+            print(f"[error] preview render failed: {e}")
+            return JSONResponse({"error": f"Preview render failed: {e}", "code": "PREVIEW_FAILED"},
+                                status_code=500)
+        return FileResponse(png_path, media_type="image/png", filename=f"{base}.png")
 
     return FileResponse(pdf_path, media_type="application/pdf", filename=f"{base}.pdf")
 
